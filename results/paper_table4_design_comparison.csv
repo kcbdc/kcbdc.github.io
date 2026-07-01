@@ -1,0 +1,5 @@
+design,p_fail,note_ko,note_en
+No CBDC,0.0400,기준(LOLR 가능),baseline (LOLR-enabled)
+Unconstrained CBDC,0.4118,무제한 (약 10배),unconstrained (~10x)
+Fixed Limit (20M KRW),0.3197,고정 한도,fixed holding limit
+Dynamic Cap + Tiered (20M KRW),0.1400,최강 완화(-27.2pp),strongest mitigation (-27.2pp)

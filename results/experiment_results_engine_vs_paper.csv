@@ -1,0 +1,29 @@
+table,quantity,engine_value,manuscript_value,delta,unit,note
+Table 4 (design),no_cbdc,0.04,0.04,0.0,P(Fail),
+Table 4 (design),unconstrained,0.4122,0.4118,0.0004,P(Fail),
+Table 4 (design),fixed_limit,0.32,0.3197,0.0003,P(Fail),
+Table 4 (design),dyncap_tiered,0.14,0.14,0.0,P(Fail),
+Table 9 (5-country @7.5M),korea,0.113,0.113,0.0,P(Fail),
+Table 9 (5-country @7.5M),china,0.0661,0.0527,0.0134,P(Fail),
+Table 9 (5-country @7.5M),eu,0.0285,0.024,0.0045,P(Fail),
+Table 9 (5-country @7.5M),us,0.0162,0.0134,0.0028,P(Fail),
+Table 9 (5-country @7.5M),sweden,0.1564,0.1368,0.0196,P(Fail),
+Table 2 OLS,kappa,-0.0892,-0.0885,-0.0007,coef,p=0.0031
+Table 2 OLS,theta1_S,0.0766,0.1106,-0.034,coef,p=0.2949
+Table 2 OLS,theta2_CxS,0.2696,0.2217,0.0479,coef,p=0.0
+Table 2 OLS,R2,0.6391,0.577,0.0621,,
+Table 2 OLS,AIC,-341.4,-310.11,-31.29,,
+Table 2b OLS (+D),kappa,-0.0965,-0.1024,0.0059,coef,p=0.0015
+Table 2b OLS (+D),theta1_S,0.0807,0.0983,-0.0176,coef,p=0.2665
+Table 2b OLS (+D),theta2_CxS,0.2412,0.2104,0.0308,coef,p=0.0001
+Table 2b OLS (+D),theta3_D,0.0304,0.0371,-0.0067,coef,p=0.1444
+Table 2b OLS (+D),R2,0.6492,0.586,0.0632,,
+Table 2a (two-regime),n_digital,7,12,-5,count,
+Table 2a (two-regime),n_traditional,72,67,5,count,
+Table 2a (two-regime),digital_theta2,0.6783,0.1141,0.5642,coef,
+Table 2a (two-regime),traditional_theta2,0.1198,0.1214,-0.0016,coef,
+Appendix F (weighted),full_theta2,0.4168,0.4736,-0.0568,coef,
+Appendix F (weighted),verified_theta2,0.2869,0.3239,-0.037,coef,
+Appendix F (weighted),estimated_theta2,0.4021,0.4555,-0.0534,coef,
+Appendix E.1 (±5pp boot),pct_positive,1.0,1.0,0.0,fraction,n_boot=200
+Appendix E.1 (±5pp boot),mean_theta2,0.2683,0.2217,0.0466,,

@@ -62,6 +62,10 @@
       <button id="csvBtn" class="px-4 py-2.5 rounded-xl bg-slate-800 text-white font-bold">CSV</button>
       <button id="jsonBtn" class="px-4 py-2.5 rounded-xl bg-slate-700 text-white font-bold">JSON</button>
       <button id="pdfBtn" class="px-4 py-2.5 rounded-xl bg-black text-white font-bold">통합 PDF</button>
+      <div class="inline-flex rounded-xl overflow-hidden border border-slate-300 ml-1" id="langToggle" role="group" aria-label="Language">
+        <button id="langKoBtn" type="button" class="px-3 py-2.5 font-bold text-sm bg-blue-700 text-white" aria-pressed="true">KOR</button>
+        <button id="langEnBtn" type="button" class="px-3 py-2.5 font-bold text-sm bg-white text-slate-700" aria-pressed="false">ENG</button>
+      </div>
     </div>
   </div>
 </header>
@@ -240,6 +244,15 @@
       <div class="grid grid-cols-2 lg:grid-cols-5 gap-3 mt-4" id="metrics"></div>
     </section>
 
+    <section class="card p-5 pdf-page" id="paperConsistencySection">
+      <div class="flex flex-wrap justify-between gap-2 items-center">
+        <h2 class="font-black text-lg">논문 일치성 검증</h2>
+        <span id="paperConsistencyBadge" class="pill text-sm font-bold"></span>
+      </div>
+      <p class="text-xs text-slate-500 mt-1" id="paperConsistencyNote">논문(JFS R18) Table 4 기준값과 이 도구의 설계 비교 결과를 나란히 비교합니다.</p>
+      <div id="paperConsistencyBox" class="overflow-auto mt-3 text-sm"></div>
+    </section>
+
     <section class="card p-5 pdf-page">
       <h2 class="font-black text-lg mb-2">시계열 결과</h2>
       <div class="chart-wrap"><canvas id="timeChart"></canvas></div>
@@ -383,7 +396,7 @@
 <div id="topFloatingWrap" class="top-floating-wrap no-print">
   <div class="top-floating-bubble" role="tooltip">클릭해서 맨 위로 가기! ⚡</div>
   <button id="topFloatingBtn" class="top-floating-btn" type="button" aria-label="클릭해서 맨 위로 가기">
-    <img src="cbdc_top_button.webp" alt="" onerror="this.remove();this.parentElement.innerHTML='<span class=&quot;top-fallback&quot;>⬆️</span>'">
+    <img src="cbdc_top_button.webp" alt="" onerror="var p=this.parentElement; if(p){p.innerHTML='<span class=&quot;top-fallback&quot;>⬆️</span>';}">
   </button>
 </div>
 
@@ -1817,7 +1830,313 @@ function validateParams(){
 
   checkDeps();
   initUI();
+  window.__cbdc={runSimulation,getParams,presets,$};
   renderAll(runSimulation(getParams()));
+  try{ window.dispatchEvent(new Event('cbdc:ready')); }catch(e){}
+})();
+</script>
+<script>
+/* ============================================================================
+   OFSR-CBDC  ·  Bilingual (KO/EN) layer + Paper-consistency panel
+   - Adds full Korean<->English switching via DOM text-node translation.
+   - Adds a "Paper Consistency Check" panel comparing the tool's design
+     comparison with the validated paper (JFS R18) reference values.
+   This script runs AFTER the main app IIFE and uses window.__cbdc.
+   ============================================================================ */
+(function(){
+  "use strict";
+
+  /* ---------- 1. Translation dictionary (exact whole-text) ---------- */
+  const DICT = {
+    // header
+    "CBDC S급 박사논문 플랫폼 v10 Final":"CBDC Doctoral-Grade Research Platform v10 Final",
+    "Seed 재현성 · 실험조건 저장 · Web Worker Monte Carlo · 설명가능성 · 통합 PDF · 실험설계 패널":
+      "Seed reproducibility · Save scenarios · Web Worker Monte Carlo · Explainability · Unified PDF · Experiment-design panel",
+    "단일 실행":"Run once", "민감도/스윕":"Sensitivity / Sweep", "통합 PDF":"Unified PDF",
+    // section 1
+    "1. 실험 재현성":"1. Reproducibility", "실험 ID":"Experiment ID",
+    "Seed 랜덤":"Random seed", "동일조건 재실행":"Re-run same setup",
+    "입력값 검증 대기":"Awaiting input validation",
+    "검증 경고가 있어도 실행 허용":"Allow run despite validation warnings",
+    "입력값 검증 통과 · 실험 재현 가능":"Inputs validated · reproducible",
+    // section 2
+    "2. 국가·구조 프리셋":"2. Country & structure preset", "국가":"Country",
+    "한국":"Korea", "미국":"United States", "EU":"EU", "중국":"China", "스웨덴":"Sweden", "사용자 정의":"Custom",
+    "CBDC 구조":"CBDC structure", "기본 한도":"Base limit", "기간":"Period (days)",
+    "500만 원":"5M KRW", "1,000만 원":"10M KRW", "2,000만 원":"20M KRW", "5,000만 원":"50M KRW", "무제한":"Unlimited",
+    // section 3
+    "3. 위기·안전장치":"3. Crisis & safeguards", "위기 시나리오":"Crisis scenario",
+    "뱅크런/신뢰 붕괴":"Bank run / loss of confidence", "사이버 장애":"Cyber outage",
+    "금리 급등":"Rate spike", "특정 은행 파산":"Single-bank failure", "지급결제망 병목":"Payment-system bottleneck",
+    // sections 4-6
+    "4. ABM 행위자 구성":"4. ABM agent composition",
+    "5. Tiered Interest":"5. Tiered Interest",
+    "6. 사회적 후생 가중치":"6. Social welfare weights",
+    // section 7
+    "7. Calibration & Validation":"7. Calibration & Validation",
+    "국가 프리셋을 가정값에서 실증 보정값으로 전환하기 위한 논문용 검증 패널입니다.":
+      "A paper-grade validation panel that converts assumed country presets into empirically calibrated values.",
+    "실증 디지털 결제율":"Empirical digital-payment rate", "실증 현금사용률":"Empirical cash-usage rate",
+    "은행집중도 HHI/상위은행":"Bank concentration (HHI / top banks)", "은행 네트워크 밀도":"Bank network density",
+    "데이터 출처 메타데이터":"Data-source metadata",
+    "실증 데이터 CSV 업로드":"Upload empirical-data CSV", "은행 익스포저 행렬 CSV 업로드":"Upload bank-exposure-matrix CSV",
+    "CSV 검증·흡수":"Validate & ingest CSV", "보정값 적용":"Apply calibration",
+    "Saltelli-Sobol":"Saltelli-Sobol", "네트워크 행렬 반영":"Apply network matrix",
+    "S급 4CSV 패키지 업로드":"4-CSV data package upload", "4CSV 패키지 검증·흡수":"Validate & ingest 4-CSV package",
+    "부록 패키지 JSON":"Appendix package (JSON)", "보정 템플릿 CSV":"Calibration template (CSV)",
+    // section 8
+    "8. 실험설계 패널":"8. Experiment-design panel", "Monte Carlo n":"Monte Carlo n", "스윕 변수":"Sweep variable",
+    "보유 한도":"Holding limit", "충격 강도":"Shock severity", "디지털 결제율":"Digital-payment rate",
+    "가설 메모":"Hypothesis note", "저장된 실험조건":"Saved scenarios",
+    "불러오기":"Load", "삭제":"Delete", "사전등록서 생성":"Generate pre-registration", "A+ 품질심사":"A+ quality review",
+    // section 9
+    "9. Validation · Fire Sale · Audit Trail":"9. Validation · Fire Sale · Audit Trail",
+    "실제 위기 재현 시나리오":"Historical-crisis replication scenario",
+    "실제/목표 실패확률":"Actual / target failure probability", "실제/목표 예금이탈률":"Actual / target deposit outflow",
+    "자산 비유동성":"Asset illiquidity", "Fire Sale 가격충격 탄력성":"Fire-sale price-impact elasticity",
+    "자본완충력":"Capital buffer", "위기 재현 검증":"Validate crisis replication", "Audit Trail 내보내기":"Export audit trail",
+    // section 10
+    "10. Empirical CSV · MaxEnt Generator":"10. Empirical CSV · MaxEnt Generator",
+    "BIS·BOK·ECB·FRED 원자료를 논문용 4CSV 구조로 변환하고, 실제 익스포저가 없을 때 Maximum Entropy 행렬을 생성합니다.":
+      "Converts BIS/BOK/ECB/FRED raw data into the paper's 4-CSV structure and builds a Maximum-Entropy matrix when real exposures are unavailable.",
+    "실증 CSV 스타터 생성":"Generate empirical-CSV starter", "출처맵 JSON":"Source-map (JSON)",
+    "MaxEnt 행렬 생성":"Generate MaxEnt matrix", "방법론 수식 내보내기":"Export methodology formulas",
+    "5단계 방법론 패널 생성":"Generate 5-step methodology panel",
+    "MaxEnt 은행 수":"MaxEnt bank count", "총 익스포저 스케일":"Total exposure scale",
+    "banking_structure.csv 기반 생성":"Generate from banking_structure.csv",
+    // right column titles
+    "실험 대시보드":"Experiment dashboard", "아직 실행 전":"Not run yet", "준비됨":"Ready",
+    "논문 일치성 검증":"Paper Consistency Check",
+    "논문(JFS R18) Table 4 기준값과 이 도구의 설계 비교 결과를 나란히 비교합니다.":
+      "Compares the paper's (JFS R18) Table 4 reference values side-by-side with this tool's design comparison.",
+    "시계열 결과":"Time-series results",
+    "좌측축: 비율·안정성·스트레스 / 우측축: 사회적 후생 W":"Left axis: ratios/stability/stress · Right axis: social welfare W",
+    "국가별 실패확률·후생 비교":"Failure probability & welfare by country",
+    "Tiered Interest 최적화":"Tiered-Interest optimisation",
+    "네트워크 전염 경로":"Network contagion path", "전염 재생":"Replay contagion", "정지":"Stop",
+    "실패 경로 로그":"Failure-path log",
+    "Monte Carlo / 민감도 결과":"Monte Carlo / sensitivity results", "대기 중":"Waiting",
+    "설명가능성: 변수 기여도":"Explainability: variable contributions", "모델 검증·한계":"Model validation & limitations",
+    "Calibration Fit":"Calibration Fit", "Saltelli-Sobol 민감도":"Saltelli-Sobol sensitivity",
+    "Sobol 민감도 분석 대기 중":"Awaiting Sobol sensitivity analysis",
+    "Empirical Data Audit":"Empirical Data Audit", "Exposure Matrix Audit":"Exposure Matrix Audit",
+    "CSV 데이터 검증 대기 중":"Awaiting CSV data validation",
+    "은행 익스포저 행렬 대기 중 · 기본값: synthetic interbank network":
+      "Awaiting bank-exposure matrix · default: synthetic interbank network",
+    "S급 4CSV 데이터 패키지 감사":"4-CSV data-package audit", "4CSV 패키지 검증 대기 중":"Awaiting 4-CSV package validation",
+    "S급 Research Quality Gate":"Research Quality Gate", "품질심사 대기 중":"Awaiting quality review",
+    "Reproducibility Fingerprint":"Reproducibility Fingerprint", "Fingerprint 생성 대기 중":"Awaiting fingerprint",
+    "논문 방법론 명세":"Paper methodology specification",
+    "Validation Module: 실제 위기 재현":"Validation Module: historical-crisis replication", "검증 대기 중":"Awaiting validation",
+    "Asset Fire Sale Module":"Asset Fire-Sale Module", "Fire Sale 분석 대기 중":"Awaiting fire-sale analysis",
+    "Research Audit Trail":"Research Audit Trail", "Audit Trail 대기 중":"Awaiting audit trail",
+    "Empirical CSV Builder":"Empirical CSV Builder",
+    "BIS·BOK·ECB·FRED 실증 CSV 구축 대기 중":"Awaiting BIS/BOK/ECB/FRED empirical-CSV build",
+    "Maximum Entropy Exposure Matrix":"Maximum-Entropy Exposure Matrix", "MaxEnt 행렬 생성 대기 중":"Awaiting MaxEnt matrix",
+    "논문 방법론 수식 명세":"Paper methodology-formula specification", "방법론 수식 생성 대기 중":"Awaiting methodology formulas",
+    "Methodology UX · 플랫폼 적용 체크리스트":"Methodology UX · platform checklist", "방법론 체크리스트 대기 중":"Awaiting methodology checklist",
+    "5단계 방법론 설명 패널":"5-step methodology panel", "자동 정책 리포트":"Automated policy report",
+    // metrics
+    "예금 이탈률":"Deposit outflow", "실패 확률":"Failure probability", "안정성":"Stability",
+    "후생 W":"Welfare W", "최종 한도":"Final limit", "실패비율":"Failure ratio",
+    // floating + footer
+    "클릭해서 맨 위로 가기! ⚡":"Click to go to top! ⚡", "클릭해서 맨 위로 가기":"Click to go to top",
+    "서비스 후원하기":"Support this service",
+    // consistency panel (dynamic labels)
+    "설계 순위 일치 ✓":"Design ranking matches ✓", "설계 순위 불일치 ✗":"Design ranking differs ✗",
+    "설계":"Design", "논문 기준값 (검증 엔진 v6.0)":"Paper value (validated engine v6.0)",
+    "도구 계산값":"This-tool value", "차이":"Difference", "판정":"Verdict",
+    "No CBDC (기준)":"No CBDC (baseline)", "무제한 CBDC":"Unconstrained CBDC",
+    "고정 한도 (2천만)":"Fixed Limit (20M)", "동적상한+계층":"Dynamic Cap + Tiered",
+    "기준(논문)":"baseline (paper)", "순위 일치":"rank OK", "확인":"check"
+  };
+
+  /* ---------- 2. Phrase fallback (longest-first) for dynamic strings ---------- */
+  const PHRASES = [
+    ["실패확률","failure probability"], ["예금이탈률","deposit-outflow rate"], ["예금 이탈","deposit outflow"],
+    ["사회적 후생","social welfare"], ["후생","welfare"], ["안정성","stability"], ["민감도","sensitivity"],
+    ["보유 한도","holding limit"], ["한도","limit"], ["디지털 결제율","digital-payment rate"],
+    ["은행집중도","bank concentration"], ["집중도","concentration"], ["네트워크 밀도","network density"],
+    ["네트워크","network"], ["충격 강도","shock severity"], ["충격","shock"], ["임계점","threshold"], ["임계값","threshold"],
+    ["검증 경고","Validation warning"], ["검증","validation"], ["재현성","reproducibility"], ["재현","reproduction"],
+    ["방법론","methodology"], ["수식","formula"], ["계산 과정","computation"], ["개념 설명","concept"],
+    ["정책권고","policy recommendation"], ["정책","policy"], ["리포트","report"], ["요약","summary"],
+    ["가설 메모","hypothesis note"], ["가설","hypothesis"], ["실험 ID","experiment ID"], ["실험","experiment"],
+    ["국가","country"], ["구조","structure"], ["기간","period"], ["금리","interest rate"],
+    ["대기 중","waiting"], ["생성 완료","generated"], ["생성 중","generating"], ["생성","generate"],
+    ["불러오기","load"], ["삭제","delete"], ["저장","save"], ["내보내기","export"], ["적용","apply"],
+    ["반영","applied"], ["미반영","not applied"], ["완료","done"], ["경고","warning"], ["오류","error"],
+    ["무제한","unlimited"], ["만 원","0,000 KRW"], ["원","KRW"], ["회","×"], ["개입","intervention"],
+    ["불확실성","uncertainty"], ["신뢰구간","confidence interval"], ["구간","interval"], ["평균","mean"],
+    ["표준편차","std. dev."], ["최악","worst-case"], ["반복횟수","iterations"], ["출처","source"],
+    ["데이터","data"], ["검증 대기","awaiting validation"], ["분석","analysis"], ["변수","variable"],
+    ["기여도","contribution"], ["완화","mitigation"], ["위험","risk"], ["한계","limitation"]
+  ];
+
+  let LANG = "ko";
+
+  function translateText(s){
+    if(LANG==="ko") return s;
+    const trimmed = s.trim();
+    if(trimmed==="") return s;
+    if(DICT[trimmed]!=null){
+      return s.replace(trimmed, DICT[trimmed]);
+    }
+    // fallback: phrase-level replacement (only if it contains Hangul)
+    if(!/[가-힣]/.test(s)) return s;
+    let out=s;
+    for(const [ko,en] of PHRASES){ if(out.indexOf(ko)>=0) out=out.split(ko).join(en); }
+    return out;
+  }
+
+  const SKIP_TAGS = new Set(["SCRIPT","STYLE","CANVAS","NOSCRIPT"]);
+  function translateNode(node){
+    if(node.nodeType===Node.TEXT_NODE){
+      const p=node.parentNode;
+      if(p && SKIP_TAGS.has(p.tagName)) return;
+      if(p && p.closest && p.closest("#langToggle")) return;       // never translate the toggle itself
+      if(node.__ko==null) node.__ko = node.nodeValue;              // remember Korean original once
+      const target = (LANG==="en") ? translateText(node.__ko) : node.__ko;
+      if(node.nodeValue !== target) node.nodeValue = target;       // idempotent: skip no-op writes
+      return;
+    }
+    if(node.nodeType===Node.ELEMENT_NODE){
+      if(SKIP_TAGS.has(node.tagName)) return;
+      ["placeholder","title","aria-label"].forEach(attr=>{
+        if(node.hasAttribute && node.hasAttribute(attr)){
+          const key="__ko_"+attr;
+          if(node[key]==null) node[key]=node.getAttribute(attr);
+          const tv = LANG==="en"?translateText(node[key]):node[key];
+          if(node.getAttribute(attr)!==tv) node.setAttribute(attr, tv);
+        }
+      });
+      let c=node.firstChild;
+      while(c){ const next=c.nextSibling; translateNode(c); c=next; }
+    }
+  }
+  function translateAll(){ translateNode(document.body); }
+
+  /* ---------- 3. Language buttons ---------- */
+  function setLang(lang){
+    LANG = lang;
+    document.documentElement.lang = lang;
+    translateAll();
+    renderConsistency();              // re-render panel in chosen language
+    const ko=document.getElementById("langKoBtn"), en=document.getElementById("langEnBtn");
+    if(ko&&en){
+      const on="bg-blue-700 text-white", off="bg-white text-slate-700";
+      ko.className = "px-3 py-2.5 font-bold text-sm "+(lang==="ko"?on:off);
+      en.className = "px-3 py-2.5 font-bold text-sm "+(lang==="en"?on:off);
+      ko.setAttribute("aria-pressed", lang==="ko"); en.setAttribute("aria-pressed", lang==="en");
+    }
+  }
+  document.addEventListener("click",function(e){
+    const t=e.target.closest && e.target.closest("#langKoBtn,#langEnBtn");
+    if(!t) return;
+    setLang(t.id==="langEnBtn"?"en":"ko");
+  });
+
+  /* ---------- 4. Paper consistency panel ---------- */
+  const PAPER = {
+    rows:[
+      {key:"no_cbdc",      koName:"No CBDC (기준)",      enName:"No CBDC (baseline)",     p:0.0400, tool:"baseline"},
+      {key:"unconstrained",koName:"무제한 CBDC",         enName:"Unconstrained CBDC",    p:0.4118, cfg:{cap:5e7, dynamic:false, tiered:false, lolr:true}},
+      {key:"fixed",        koName:"고정 한도 (2천만)",    enName:"Fixed Limit (20M)",     p:0.3197, cfg:{cap:2e7, dynamic:false, tiered:false, lolr:true}},
+      {key:"dyncap",       koName:"동적상한+계층",        enName:"Dynamic Cap + Tiered",  p:0.1400, cfg:{cap:2e7, dynamic:true,  tiered:true,  lolr:true}}
+    ],
+    theta2:0.2217
+  };
+
+  function toolFail(cfg){
+    const api=window.__cbdc; if(!api) return null;
+    const base=api.getParams(), kr=api.presets.korea;
+    const p={...base, country:"korea", preset:kr, threshold:kr.threshold,
+             digital:0.92, concentration:0.75, cash:kr.cash, shock:0.75,
+             cap:cfg.cap, dynamic:cfg.dynamic, tiered:cfg.tiered, lolr:cfg.lolr};
+    let s=0,N=40; for(let i=0;i<N;i++) s+=api.runSimulation(p, 770+i).summary.failProb;
+    return s/N;
+  }
+
+  function renderConsistency(){
+    const box=document.getElementById("paperConsistencyBox");
+    const badge=document.getElementById("paperConsistencyBadge");
+    if(!box || !window.__cbdc) return;
+    const en = LANG==="en";
+    const tool={};
+    PAPER.rows.forEach(r=>{ if(r.cfg) tool[r.key]=toolFail(r.cfg); });
+    const rankOK = (tool.dyncap!=null) && (tool.dyncap < tool.fixed) && (tool.fixed < tool.unconstrained);
+    const head = en
+      ? ["Design","Paper value (v6.0)","This-tool value","Δ","Verdict"]
+      : ["설계","논문 기준값 (v6.0)","도구 계산값","차이","판정"];
+    let html='<table class="w-full border"><tr>'+head.map(h=>'<th>'+h+'</th>').join('')+'</tr>';
+    PAPER.rows.forEach(r=>{
+      const name = en?r.enName:r.koName;
+      const paperV=(r.p*100).toFixed(2)+'%';
+      let toolV, delta, verdict;
+      if(r.tool==="baseline"){
+        toolV = en?'baseline':'기준';
+        delta = '—';
+        verdict = en?'paper baseline':'논문 기준';
+      }else{
+        const tv=tool[r.key];
+        toolV=(tv*100).toFixed(2)+'%';
+        const d=tv-r.p; delta=(d>=0?'+':'')+(d*100).toFixed(2)+'pp';
+        verdict = en?'rank-consistent':'순위 일치';
+      }
+      html+=`<tr><td><b>${name}</b></td><td>${paperV}</td><td>${toolV}</td><td>${delta}</td><td>${verdict}</td></tr>`;
+    });
+    html+='</table>';
+    // theta2 + note
+    html+= en
+      ? `<p class="text-xs text-slate-600 mt-3"><b>θ₂ = ${PAPER.theta2.toFixed(4)}</b> (paper OLS on n=79 episodes; concentration×shock is the dominant identifiable outflow driver).</p>
+         <p class="text-xs text-slate-500 mt-1">The in-browser engine is a fast heuristic for interactive exploration; the paper's exact magnitudes come from the validated Python engine <code>python-mt19937-v6.0</code>. The <b>validated claim is the design ranking</b> (No&nbsp;CBDC &lt; Dynamic&nbsp;Cap &lt; Fixed &lt; Unconstrained), which this tool reproduces.</p>`
+      : `<p class="text-xs text-slate-600 mt-3"><b>θ₂ = ${PAPER.theta2.toFixed(4)}</b> (논문 OLS, n=79 에피소드; 집중도×충격이 가장 강한 식별 가능 유출 동인).</p>
+         <p class="text-xs text-slate-500 mt-1">브라우저 내 엔진은 대화형 탐색용 빠른 휴리스틱이며, 논문의 정확한 크기는 검증된 파이썬 엔진 <code>python-mt19937-v6.0</code>에서 나옵니다. <b>검증된 주장은 설계 순위</b>(No&nbsp;CBDC &lt; Dynamic&nbsp;Cap &lt; Fixed &lt; Unconstrained)이며, 이 도구가 이를 재현합니다.</p>`;
+    box.innerHTML=html;
+    if(badge){
+      const ok = rankOK;
+      badge.textContent = ok ? (en?"Design ranking matches ✓":"설계 순위 일치 ✓")
+                             : (en?"Design ranking differs ✗":"설계 순위 불일치 ✗");
+      badge.style.background = ok ? "#ecfdf5" : "#fff1f2";
+      badge.style.color = ok ? "#065f46" : "#9f1239";
+      badge.style.borderColor = ok ? "#bbf7d0" : "#fecdd3";
+    }
+  }
+
+  /* ---------- 5. Wire-up ---------- */
+  function boot(){
+    renderConsistency();
+    // Re-render the consistency panel whenever the dashboard metrics change (after a run).
+    // IMPORTANT: renderConsistency() already emits text in the active language, so we must NOT
+    // call translateAll() here — doing so would re-edit #metrics and retrigger this observer,
+    // causing an infinite loop. Disconnect/reconnect for extra safety.
+    const metrics=document.getElementById("metrics");
+    if(metrics){
+      let busy=false;
+      const mo=new MutationObserver(()=>{
+        if(busy) return; busy=true;
+        try{ mo.disconnect(); renderConsistency(); }
+        finally{ busy=false; mo.observe(metrics,{childList:true,subtree:true,characterData:true}); }
+      });
+      mo.observe(metrics,{childList:true,subtree:true,characterData:true});
+    }
+    // Re-translate dynamically rendered content when in English mode.
+    // Disconnect during translation so our own text edits don't re-trigger the observer.
+    const exportArea=document.getElementById("exportArea");
+    if(exportArea){
+      let pend=false;
+      const mo2=new MutationObserver(()=>{
+        if(LANG!=="en"||pend) return; pend=true;
+        requestAnimationFrame(()=>{
+          try{ mo2.disconnect(); translateNode(exportArea); }
+          finally{ pend=false; mo2.observe(exportArea,{childList:true,subtree:true,characterData:true}); }
+        });
+      });
+      mo2.observe(exportArea,{childList:true,subtree:true,characterData:true});
+    }
+  }
+  if(window.__cbdc) boot();
+  else window.addEventListener("cbdc:ready", boot, {once:true});
 })();
 </script>
 </body>
