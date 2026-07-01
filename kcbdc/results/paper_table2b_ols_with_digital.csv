@@ -1,0 +1,5 @@
+parameter,symbol,estimate,std_error,t_stat,p_value
+Constant,kappa,-0.1024,0.0361,-2.836,0.0056
+Shock severity,theta1,0.0983,0.0752,1.308,0.1946
+Concentration x Shock,theta2,0.2104,0.0673,3.126,0.0025
+Digital adoption,theta3,0.0371,0.0247,1.503,0.1368

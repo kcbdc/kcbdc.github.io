@@ -1,0 +1,6 @@
+country,cap_krw,p_fail,welfare,p_below_5pct,p_below_8pct
+Korea,7500000,0.1130,0.7511,No,No
+China,7500000,0.0527,0.7671,No,Yes
+EU,7500000,0.0240,0.7595,Yes,Yes
+US,7500000,0.0134,0.7707,Yes,Yes
+Sweden,7500000,0.1368,0.7466,No,No

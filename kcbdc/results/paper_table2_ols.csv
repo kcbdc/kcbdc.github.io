@@ -1,0 +1,4 @@
+parameter,symbol,estimate,std_error,t_stat,p_value,ci_low,ci_high
+Constant,kappa,-0.0885,0.0280,-3.159,0.0016,-0.1435,-0.0336
+Shock severity,theta1,0.1106,0.0736,1.502,0.1331,-0.0337,0.2548
+Concentration x Shock,theta2,0.2217,0.0660,3.358,0.0008,0.0923,0.3512
